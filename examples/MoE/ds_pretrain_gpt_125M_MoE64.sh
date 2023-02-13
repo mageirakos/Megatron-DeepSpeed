@@ -1,9 +1,12 @@
+# sbatch -n 1 -N 1 --cpus-per-task=12 --gpus=rtx_3090:8 --time=48:00:00 --mem-per-cpu=2048 --output="run.log" --error="run.error" --open-mode=append --wrap="source /cluster/home/vmageirakos/projects/moe-optimal-deployment/Megatron-DeepSpeed/examples/MoE/ds_pretrain_gpt_125M_MoE64.sh"
+
 #!/bin/bash
+# DIR=`/cluster/scratch/vmageirakos/outputs/output-mt-ds-run2`
 DIR=`pwd`
 ###############################################################################
 ### Main configs
 ## GPT-3 models use 2K sequence length/context window
-SEQ_LEN=2048
+SEQ_LEN=1024
 
 ### The "GPT-3 XXX" below are configs from GPT-3 paper
 ### https://arxiv.org/abs/2005.14165, choose based on
@@ -84,7 +87,8 @@ GLOBAL_BATCH_SIZE=256
 ### Training duration configs
 ## The main termination condition, original GPT-3 paper trains for 300B tokens
 ## For MoE model, we found sometimes training a bit more to 330B tokens helps
-TRAIN_TOKENS=300000000000
+TRAIN_TOKENS=10000000000
+# TRAIN_TOKENS=300000000000
 # TRAIN_TOKENS=330000000000
 
 ## TRAIN_ITERS is another termination condition and also affect the number of 
@@ -105,7 +109,7 @@ EXIT_DURATION=30000000
 ## For MoE model, we found that setting the decay token to 300B helps.
 WARMUP_TOKENS=375000000
 # LR_DECAY_TOKENS=260000000000
-LR_DECAY_TOKENS=300000000000
+LR_DECAY_TOKENS=10000000000
 ###############################################################################
 ### Parallelism configs
 ## Micro batch size per GPU
@@ -120,8 +124,11 @@ MP_SIZE=1
 ## Currently we don't support PP for MoE. To disable PP, set PP_SIZE
 ## to 1 and use the "--no-pipeline-parallel" arg.
 PP_SIZE=1
-NUM_GPUS=$(($(ds_ssh nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)-2))
-NUM_GPUS_PERNODE=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
+NUM_GPUS=8
+NUM_GPUS_PERNODE=8
+
+# NUM_GPUS=$(($(ds_ssh nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)-2))
+# NUM_GPUS_PERNODE=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
 NUM_NODE=$(( ${NUM_GPUS} / ${NUM_GPUS_PERNODE} ))
 ###############################################################################
 ### MoE configs
@@ -140,8 +147,8 @@ fi
 ## For 1.3B MoE-128 model we used LR=1.2e-4 and MIN_LR=1.0e-6.
 ## For 350M MoE-128 model we used LR=2.0e-4 and MIN_LR=2.0e-6, but they are not
 ## heavily tuned.
-LR=4.5e-4
-MIN_LR=4.5e-06
+LR=1.5e-4
+MIN_LR=1.5e-06
 
 ## Coefficient for MoE loss. We find that 0.01 is a good value at least for
 ## 1.3B MoE-128 model
@@ -195,7 +202,7 @@ if [ "${CL_ENABLED}" = "true" ]; then
     NAME="${NAME}-cl-${CL_START_SEQLEN}-${CL_STEP}"
 fi
 
-OUTPUT_BASEPATH=$DIR/output
+OUTPUT_BASEPATH=$DIR
 mkdir -p "${OUTPUT_BASEPATH}/tensorboard/"
 mkdir -p "${OUTPUT_BASEPATH}/checkpoint/"
 mkdir -p "${OUTPUT_BASEPATH}/log/"
@@ -242,11 +249,11 @@ if [ "${USE_INTERNAL_DATA}" = "true" ]; then
     0.00208 ${NIH} 0.13017 ${CC2020} 0.09446 ${PCC} 0.15652 ${CC2021} \
     0.01359 ${ARX} 0.01588 ${GIT}"
 else
-    VOCAB_PATH=/data/the_pile_public_merged_nopreprocessing/gpt2-vocab.json
-    MERGE_PATH=/data/the_pile_public_merged_nopreprocessing/gpt2-merges.txt
+    VOCAB_PATH=/cluster/scratch/vmageirakos/data/gpt2-vocab.json
+    MERGE_PATH=/cluster/scratch/vmageirakos/data/gpt2-merges.txt
     # Public the Pile dataset, can be downloaded at https://mystic.the-eye.eu/public/AI/pile_neox/
     # For cluster Azure-EastUS-V100-32GB-4, Lab-RR1-V100
-    DATA_PATH=/vc_data_blob/users/conglli/the_pile_public_merged_nopreprocessing/pile_text_document
+    DATA_PATH=/cluster/scratch/vmageirakos/data/Pile/pile_text_document
     # For cluster Azure-WestUS3-A100
     # DATA_PATH=/blob/data/the_pile_public_merged_nopreprocessing/pile_text_document
 fi
@@ -317,8 +324,8 @@ megatron_options="${megatron_options} \
         --disable-moe-token-dropping"
 fi
 
-template_json="ds_config_gpt_TEMPLATE.json"
-config_json="ds_config_gpt_${NAME}.json"
+template_json="/cluster/home/vmageirakos/projects/moe-optimal-deployment/Megatron-DeepSpeed/examples/MoE/ds_config_gpt_TEMPLATE.json"
+config_json="/cluster/home/vmageirakos/projects/moe-optimal-deployment/Megatron-DeepSpeed/examples/MoE/ds_config_gpt_${NAME}.json"
 sed "s/CONFIG_BATCH_SIZE/${GLOBAL_BATCH_SIZE}/" ${template_json} \
     | sed "s/CONFIG_MBSIZE/${BATCH_SIZE}/" \
     | sed "s/LOG_INTERVAL/${LOG_INTERVAL}/" \
@@ -367,7 +374,7 @@ if [[ $ITERATION -gt 0 ]]; then
     ds_ssh "echo $ITERATION_2 > $ITERATION_FILE_2"
 fi
 
-run_cmd="deepspeed ${DIR}/../../pretrain_gpt.py ${megatron_options} ${data_options} ${deepspeed_options} &> ${OUTPUT_BASEPATH}/log/${NAME}_${host}_${current_time}.log"
+run_cmd="deepspeed /cluster/home/vmageirakos/projects/moe-optimal-deployment/Megatron-DeepSpeed/pretrain_gpt.py ${megatron_options} ${data_options} ${deepspeed_options} &> ${OUTPUT_BASEPATH}/log/${NAME}_${host}_${current_time}.log"
 echo ${run_cmd}
 eval ${run_cmd}
 set +x
