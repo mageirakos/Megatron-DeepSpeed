@@ -1,4 +1,4 @@
-# sbatch -n 1 --cpus-per-task=8 --gpus=rtx_3090:8 --time=4:00:00 --mem-per-cpu=5G --output="test.log" --error="test.error" --open-mode=truncate --wrap="source /cluster/scratch/vmageirakos/Megatron-DeepSpeed/examples/MoE/vasilis_ds_pretrain_gpt_100M_MoE_8E_bs-32_seq-1024_GPU-8.sh"
+# sbatch -n 1 --cpus-per-task=16 --gpus=rtx_3090:8 --time=4:00:00 --mem-per-cpu=2G --output="test.log" --error="test.error" --open-mode=truncate --wrap="source /cluster/scratch/vmageirakos/Megatron-DeepSpeed/examples/MoE/vasilis_ds_pretrain_gpt_100M_MoE_8E_bs-32_seq-1024_GPU-8.sh"
 #!/bin/bash
 # DIR=`/cluster/scratch/vmageirakos/outputs/output-mt-ds-vasilis`
 DIR=`pwd`

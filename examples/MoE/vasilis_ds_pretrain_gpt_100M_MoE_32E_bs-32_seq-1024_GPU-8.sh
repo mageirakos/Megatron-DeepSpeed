@@ -1,4 +1,4 @@
-# sbatch -n 1 --cpus-per-task=16 --gpus=rtx_3090:8 --time=4:00:00 --mem-per-cpu=2G --output="test.log" --error="test.error" --open-mode=truncate --wrap="source /cluster/scratch/vmageirakos/Megatron-DeepSpeed/examples/MoE/vasilis_ds_pretrain_gpt_100M_MoE_8E_bs-64_seq-1024_GPU-8.sh"
+# sbatch -n 1 --cpus-per-task=16 --gpus=rtx_3090:8 --time=4:00:00 --mem-per-cpu=2G --output="test.log" --error="test.error" --open-mode=truncate --wrap="source /cluster/scratch/vmageirakos/Megatron-DeepSpeed/examples/MoE/vasilis_ds_pretrain_gpt_100M_MoE_32E_bs-32_seq-1024_GPU-8.sh"
 #!/bin/bash
 # DIR=`/cluster/scratch/vmageirakos/outputs/output-mt-ds-vasilis`
 DIR=`pwd`
@@ -11,12 +11,12 @@ SEQ_LEN=1024
 ### https://arxiv.org/abs/2005.14165, choose based on
 ### your desired model size or build your own configs
 
-## GPT-3 Small 100M
+## GPT-3 Small 10M
 MODEL_SIZE=0.1
 NUM_LAYERS=12
 HIDDEN_SIZE=768
 NUM_ATTN_HEADS=12
-GLOBAL_BATCH_SIZE=64
+GLOBAL_BATCH_SIZE=32
 # LR=6.0e-4
 # MIN_LR=6.0e-5
 
@@ -133,7 +133,7 @@ PP_SIZE=1
 ### MoE configs
 ## Number of experts. EP_SIZE 1 means dense model without MoE
 # EP_SIZE=1
-EP_SIZE=8 # Number of Experts
+EP_SIZE=32 # Number of Experts
 
 if [[ $EP_SIZE -gt $NUM_GPUS ]]; then
     EP_PARALLEL_SIZE=$NUM_GPUS
